@@ -6,10 +6,12 @@
 
 class ili9486_16_pararrel {
 public:
+	// DO NOT CHANGE
 	static constexpr uint16_t LONG_SIDE = (uint16_t)480;
 	static constexpr uint16_t SHORT_SIDE = (uint16_t)320;
 	static constexpr uint8_t DATA_PINS_NUM = (uint8_t)16;
 
+	// Assign pin to functionalities, data line pins must be consecutive, d0 is pin with lowest number
 	ili9486_16_pararrel(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0);
 
 	void init();
@@ -17,10 +19,9 @@ public:
 	void setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 
 private:
-	void sendCommand(uint8_t command);
-	void sendData(uint8_t data);
-	void wrxPulse();
-	void dataOut(uint16_t data);
+	void sendCommand(uint8_t command); // Send command byte
+	void sendData(uint8_t data); // Send data byte
+	void dataOut(uint16_t data); // Slower then setting mask on gpio, to double ensure proper transfer (eg. during initialization)
 
 	const uint8_t csx;
 	const uint8_t dcx;

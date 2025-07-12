@@ -222,6 +222,7 @@ void ili9486_16_pararrel::fillScreen(uint8_t red, uint8_t green, uint8_t blue) {
     color += RGB888_TO_RGB565(red, green, blue);
 
     for (uint64_t i = 0; i < (uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE; i++) {
+        // Without nops transfer is too fast (ili9486 limitations)
         gpio_put(wrx, 0);
         __asm volatile("nop");
         __asm volatile("nop");
