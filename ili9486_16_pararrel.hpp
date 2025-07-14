@@ -30,6 +30,7 @@ private:
 	void sendData(uint8_t data); // Send data byte
 	void dataOut(uint16_t data); // Slower then setting mask on gpio, to double ensure proper transfer (eg. during initialization)
 
+	inline void initGRAMWrite();
 	inline uint16_t rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue);
 
 	const uint8_t csx;
@@ -41,4 +42,10 @@ private:
 
 uint16_t ili9486_16_pararrel::rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue) {
  	return ((blue & 0xF8) << 8) | ((green & 0xFC) << 3) | ((red & 0xF8) >> 3);
+}
+
+void ili9486_16_pararrel::initGRAMWrite() {
+	sendCommand(0x2C);
+	gpio_put(dcx, 1);
+    gpio_put(csx, 0);
 }

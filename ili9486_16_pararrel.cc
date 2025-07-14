@@ -191,21 +191,22 @@ void ili9486_16_pararrel::sendData(uint8_t data) {
 }
 
 void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
-    sendCommand(0x2A); // CASET
-    sendData(x0 >> 8); sendData(x0 & 0xFF);
-    sendData(x1 >> 8); sendData(x1 & 0xFF);
+    sendCommand(0x2A);
+    sendData(x0 >> 8); 
+    sendData(x0 & 0xFF);
+    sendData(x1 >> 8); 
+    sendData(x1 & 0xFF);
 
-    sendCommand(0x2B); // PASET
-    sendData(y0 >> 8); sendData(y0 & 0xFF);
-    sendData(y1 >> 8); sendData(y1 & 0xFF);
-
-    sendCommand(0x2C); // RAMWR
+    sendCommand(0x2B);
+    sendData(y0 >> 8);
+    sendData(y0 & 0xFF);
+    sendData(y1 >> 8);
+    sendData(y1 & 0xFF);
 }
 
 void ili9486_16_pararrel::fillScreen(uint8_t red, uint8_t green, uint8_t blue) {
     setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
-    gpio_put(dcx, 1);
-    gpio_put(csx, 0);
+    initGRAMWrite();
 
     uint16_t color = rgb888_to_bgr565(red, green, blue);
 
@@ -232,8 +233,7 @@ void ili9486_16_pararrel::printFrame(uint8_t *buffer) {
     sendCommand(0x29); // Seems to discrad tearing effect while changing frame
     
     setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
-    gpio_put(dcx, 1);
-    gpio_put(csx, 0);
+    initGRAMWrite();
 
     uint32_t c = (uint32_t)0;
 
