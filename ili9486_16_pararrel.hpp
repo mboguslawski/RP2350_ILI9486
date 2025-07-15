@@ -39,6 +39,8 @@ public:
 	void printFrame(uint16_t *buffer);
 	// Set rectangle into which next print will be loaded (can be smaller then entire screen)
 	void setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
+	// Return true if dma/pio is still sending data, any interaction with ili9486 if this method returns true might couze unexpected behavior  
+	inline bool isBusy();
 	// Convert RGB888 format to BGR565, and pack it to 16-bit value
 	static inline uint16_t rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue);
 private:
@@ -85,7 +87,11 @@ void ili9486_16_pararrel::initGRAMWrite() {
 }
 
 void ili9486_16_pararrel::waitForPio() {
-	while(pio_interrupt_get(pio, 0) || !pio_sm_is_tx_fifo_empty(pio, 0)) {
+	while(pio_interrupt_get(pio, 0) || !pio_sm_is_tx_fifo_empty(pio, SM0)) {
         sleep_us(1);
     }
+}
+
+bool ili9486_16_pararrel::isBusy() {
+	return pio_interrupt_get(pio, 0) || !pio_sm_is_tx_fifo_empty(pio, SM0) || dma_channel_is_busy(dmaChannel);
 }
