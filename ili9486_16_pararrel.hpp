@@ -14,6 +14,7 @@ TODO: easy reconfiguration
 
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
+#include "hardware/dma.h"
 
 #include "ili9486_gram_write.pio.h"
 
@@ -29,10 +30,11 @@ public:
 	enum ColorMode {RGB656};
 
 	void init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio, const ColorMode mode);
-	void fillScreen(uint8_t red, uint8_t green, uint8_t blue);
-	void printFrame(uint8_t *buffer);
+	void fillScreen(uint16_t *color);
+	void printFrame(uint16_t *buffer);
 	void setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 
+	static inline uint16_t rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue);
 private:
 	// Only one class instance allowed
 	ili9486_16_pararrel() = default;
@@ -50,11 +52,11 @@ private:
 	void sendCommand(uint8_t command); // Send command byte
 	void sendData(uint8_t data); // Send data byte
 	void write16blocking(uint16_t data, bool pioWait = true); // Send 16 bits to pio FIFO
+	void writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits = 0);
 
 	inline void waitForPio(); // Wait till pio finished data transfer
 
 	inline void initGRAMWrite();
-	inline uint16_t rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue);
 	
 	PIO pio;
 	uint8_t csx;
@@ -62,6 +64,7 @@ private:
 	uint8_t resx;
 	uint8_t wrx;
 	uint8_t d0; // D0-D15 are consecutive pins
+	int dmaChannel; // Currently used DMA channel, -1 if no dma channel in use
 };
 
 uint16_t ili9486_16_pararrel::rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue) {

@@ -14,6 +14,9 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     this->d0 = d0;
     this->pio = pio;
     
+    // DMA setup
+    this->dmaChannel = dma_claim_unused_channel(true);
+
     // PIO setup
     int offsetProg1 = pio_add_program(pio, &data_push_program);
     int offsetProg2 = pio_add_program(pio, &wrx_management_program);
@@ -68,7 +71,7 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
 
     // Frame Rate Control (In Normal Mode/Full Colors)
     sendCommand(0xB1);
-    sendData(0xA0); // Modifying this can resolve flicering strips, see ILI9486 datasheet before edit
+    sendData(0xB0); // Modifying this can resolve flicering strips, see ILI9486 datasheet before edit
     sendData(0x11);
 
     // Display Inversion Control
@@ -180,6 +183,26 @@ void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
     }
 }
 
+void ili9486_16_pararrel::writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits) {
+    // Configure dma channel
+    dma_channel_config c = dma_channel_get_default_config(dmaChannel);
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_16);
+    channel_config_set_read_increment(&c, true);
+    channel_config_set_write_increment(&c, false);
+    channel_config_set_dreq(&c, DREQ_PIO0_TX0);
+    channel_config_set_ring(&c, false, repeatBits);
+
+    // Start transfer
+    dma_channel_configure(
+        dmaChannel,
+        &c,
+        &pio->txf[0],        // Destination: PIO TX FIFO
+        buffer,              // Source
+        bufferSize,          // Total pixels to write
+        true                 // Start transfer
+    );
+}
+
 void ili9486_16_pararrel::sendCommand(uint8_t cmd) {
     gpio_put(dcx, 0);
     write16blocking((uint16_t)cmd);
@@ -204,29 +227,16 @@ void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1
     sendData(y1 & 0xFF);
 }
 
-void ili9486_16_pararrel::fillScreen(uint8_t red, uint8_t green, uint8_t blue) {
+void ili9486_16_pararrel::fillScreen(uint16_t *color) {
     setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
     initGRAMWrite();
 
-    uint16_t color = rgb888_to_bgr565(red, green, blue);
-    bool pioWait = false;
-    for (uint64_t i = 0; i < (uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE; i++) {
-        pioWait = ((uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE == i + 1);
-        write16blocking(color, pioWait);
-    }
-
-    sendCommand(0x29); // Seems to discrad tearing effect while changing frame
+    writeBufferDMA(color, (uint64_t)LONG_SIDE * (uint64_t)SHORT_SIDE, 1);
 }
 
-void ili9486_16_pararrel::printFrame(uint8_t *buffer) {
+void ili9486_16_pararrel::printFrame(uint16_t *buffer) {
     setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
     initGRAMWrite();
 
-    bool pioWait = false;
-    for (uint64_t i = 0; i < (uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE; i++) {
-        pioWait = ((uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE == i + 1);
-        write16blocking(rgb888_to_bgr565(buffer[i*3+0], buffer[i*3+1], buffer[i*3+2]), pioWait);
-    }
-
-    sendCommand(0x29); // Seems to discrad tearing effect while changing frame
+    writeBufferDMA(buffer, LONG_SIDE * SHORT_SIDE);
 }
