@@ -1,7 +1,5 @@
 #include "ili9486_16_pararrel.hpp"
 
-
-
 ili9486_16_pararrel::ili9486_16_pararrel(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio):
     pio(pio),
     csx(csx),
@@ -16,11 +14,11 @@ void ili9486_16_pararrel::init(const ColorMode mode) {
     int offsetProg1 = pio_add_program(pio, &data_push_program);
     int offsetProg2 = pio_add_program(pio, &wrx_management_program);
 
-    data_push_program_init(pio, 0, offsetProg1, d0);
-    wrx_management_program_init(pio, 1, offsetProg2, wrx);
+    data_push_program_init(pio, SM0, offsetProg1, d0);
+    wrx_management_program_init(pio, SM1, offsetProg2, wrx);
 
-    pio_sm_set_enabled(pio, 0, true);
-    pio_sm_set_enabled(pio, 1, true);
+    pio_sm_set_enabled(pio, SM0, true);
+    pio_sm_set_enabled(pio, SM1, true);
 
     // GPIO setup (D0-D15 and wrx are handled via PIO)
     gpio_init(csx);

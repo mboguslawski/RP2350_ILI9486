@@ -16,8 +16,7 @@ public:
 	// DO NOT CHANGE
 	static constexpr uint16_t LONG_SIDE = (uint16_t)480;
 	static constexpr uint16_t SHORT_SIDE = (uint16_t)320;
-	static constexpr uint8_t DATA_PINS_NUM = (uint8_t)16;
-	
+
 	enum ColorMode {RGB656};
 
 	// Assign pin to functionalities, data line pins must be consecutive, d0 is pin with lowest number
@@ -29,6 +28,10 @@ public:
 	void setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 
 private:
+	// Which state machines to use
+	static constexpr uint8_t SM0 = (uint8_t)0;
+	static constexpr uint8_t SM1 = (uint8_t)1;
+
 	void sendCommand(uint8_t command); // Send command byte
 	void sendData(uint8_t data); // Send data byte
 	void write16blocking(uint16_t data, bool pioWait = true); // Send 16 bits to pio FIFO
