@@ -1,15 +1,19 @@
 #include "ili9486_16_pararrel.hpp"
 
-ili9486_16_pararrel::ili9486_16_pararrel(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio):
-    pio(pio),
-    csx(csx),
-    dcx(dcx),
-    resx(resx),
-    wrx(wrx),
-    d0(d0)
-{}
+ili9486_16_pararrel& ili9486_16_pararrel::getInstance() {
+    static ili9486_16_pararrel driver;
+    return driver;
+}
 
-void ili9486_16_pararrel::init(const ColorMode mode) {
+void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio, const ColorMode mode) {
+    // Assign values
+    this->csx = csx;
+    this->dcx = dcx;
+    this->resx = resx;
+    this->wrx = wrx;
+    this->d0 = d0;
+    this->pio = pio;
+    
     // PIO setup
     int offsetProg1 = pio_add_program(pio, &data_push_program);
     int offsetProg2 = pio_add_program(pio, &wrx_management_program);
