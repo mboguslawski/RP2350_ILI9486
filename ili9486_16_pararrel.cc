@@ -2,7 +2,8 @@
 
 
 
-ili9486_16_pararrel::ili9486_16_pararrel(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0):
+ili9486_16_pararrel::ili9486_16_pararrel(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio):
+    pio(pio),
     csx(csx),
     dcx(dcx),
     resx(resx),
@@ -11,20 +12,23 @@ ili9486_16_pararrel::ili9486_16_pararrel(const uint8_t csx, const uint8_t dcx, c
 {}
 
 void ili9486_16_pararrel::init(const ColorMode mode) {
-    // GPIO setup
+    // PIO setup
+    int offsetProg1 = pio_add_program(pio, &data_push_program);
+    int offsetProg2 = pio_add_program(pio, &wrx_management_program);
+
+    data_push_program_init(pio, 0, offsetProg1, d0);
+    wrx_management_program_init(pio, 1, offsetProg2, wrx);
+
+    pio_sm_set_enabled(pio, 0, true);
+    pio_sm_set_enabled(pio, 1, true);
+
+    // GPIO setup (D0-D15 and wrx are handled via PIO)
     gpio_init(csx);
     gpio_set_dir(csx, GPIO_OUT);
     gpio_init(dcx);
     gpio_set_dir(dcx, GPIO_OUT);
     gpio_init(resx);
     gpio_set_dir(resx, GPIO_OUT);
-    gpio_init(wrx);
-    gpio_set_dir(wrx, GPIO_OUT);
-
-    for (uint8_t i = 0; i < DATA_PINS_NUM; i++) {
-        gpio_init(d0 + i);
-        gpio_set_dir(d0 + i, GPIO_OUT); 
-    }
 
     // Initialization sequence //
 
@@ -38,6 +42,8 @@ void ili9486_16_pararrel::init(const ColorMode mode) {
     sleep_ms(100);
     gpio_put(resx, 1);
     sleep_ms(100);
+
+    gpio_put(csx, 0);
 
     // Power control 1
     sendCommand(0xC0);
@@ -164,30 +170,22 @@ void ili9486_16_pararrel::init(const ColorMode mode) {
     sleep_ms(20);
 }
 
-void ili9486_16_pararrel::dataOut(uint16_t data) {
-    for (uint8_t i = 0; i < DATA_PINS_NUM; i++) {
-        gpio_put(d0+i, data & (1<<i));
+void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
+    pio_sm_put_blocking(pio, 0, (uint32_t)data);
+
+    if (pioWait) {
+        waitForPio();
     }
 }
 
 void ili9486_16_pararrel::sendCommand(uint8_t cmd) {
     gpio_put(dcx, 0);
-    gpio_put(csx, 0);
-    gpio_put(wrx, 0);
-    uint16_t c = cmd;
-    dataOut(c);
-    gpio_put(wrx, 1);
-    gpio_put(csx, 1);
+    write16blocking((uint16_t)cmd);
 }
 
 void ili9486_16_pararrel::sendData(uint8_t data) {
     gpio_put(dcx, 1);
-    gpio_put(csx, 0);
-    gpio_put(wrx, 0);
-    uint16_t d = data;
-    dataOut(d);
-    gpio_put(wrx, 1);
-    gpio_put(csx, 1);
+    write16blocking((uint16_t)data);
 }
 
 void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
@@ -209,41 +207,24 @@ void ili9486_16_pararrel::fillScreen(uint8_t red, uint8_t green, uint8_t blue) {
     initGRAMWrite();
 
     uint16_t color = rgb888_to_bgr565(red, green, blue);
-
+    bool pioWait = false;
     for (uint64_t i = 0; i < (uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE; i++) {
-        // Without nops transfer is too fast (ili9486 limitations)
-        gpio_put(wrx, 0);
-        __asm volatile("nop");
-        __asm volatile("nop");
-        __asm volatile("nop");
-        gpio_clr_mask(0xFFFF);
-        gpio_set_mask(color);
-        __asm volatile("nop");
-        __asm volatile("nop");
-        gpio_put(wrx, 1);
-        __asm volatile("nop");
-        __asm volatile("nop");
+        pioWait = ((uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE == i + 1);
+        write16blocking(color, pioWait);
     }
 
-    gpio_put(csx, 1);
     sendCommand(0x29); // Seems to discrad tearing effect while changing frame
 }
 
 void ili9486_16_pararrel::printFrame(uint8_t *buffer) {
-    sendCommand(0x29); // Seems to discrad tearing effect while changing frame
-    
     setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
     initGRAMWrite();
 
-    uint32_t c = (uint32_t)0;
-
+    bool pioWait = false;
     for (uint64_t i = 0; i < (uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE; i++) {
-        gpio_put(wrx, 0);
-        uint32_t c = (uint32_t)0 + rgb888_to_bgr565(buffer[i*3+0], buffer[i*3+1], buffer[i*3+2]);
-        gpio_put_masked(0x0000FFFF, c);
-        gpio_put(wrx, 1);
+        pioWait = ((uint64_t)ili9486_16_pararrel::LONG_SIDE * (uint64_t)ili9486_16_pararrel::SHORT_SIDE == i + 1);
+        write16blocking(rgb888_to_bgr565(buffer[i*3+0], buffer[i*3+1], buffer[i*3+2]), pioWait);
     }
 
-    gpio_put(csx, 1);
     sendCommand(0x29); // Seems to discrad tearing effect while changing frame
 }
