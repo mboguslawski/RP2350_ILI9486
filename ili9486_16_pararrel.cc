@@ -35,10 +35,77 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     gpio_init(resx);
     gpio_set_dir(resx, GPIO_OUT);
 
-    // Initialization sequence //
+    setupILI9486(mode);
+}
 
-    gpio_put(csx, 1);
+void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
+    pio_sm_put_blocking(pio, 0, (uint32_t)data);
+
+    if (pioWait) {
+        waitForPio();
+    }
+}
+
+void ili9486_16_pararrel::writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits) {
+    // Configure dma channel
+    dma_channel_config c = dma_channel_get_default_config(dmaChannel);
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_16);
+    channel_config_set_read_increment(&c, true);
+    channel_config_set_write_increment(&c, false);
+    channel_config_set_dreq(&c, pio_get_dreq(pio, SM0, true));
+    channel_config_set_ring(&c, false, repeatBits);
+
+    // Start transfer
+    dma_channel_configure(
+        dmaChannel,
+        &c,
+        &pio->txf[0],        // Destination: PIO TX FIFO
+        buffer,              // Source
+        bufferSize,          // Total pixels to write
+        true                 // Start transfer
+    );
+}
+
+void ili9486_16_pararrel::sendCommand(uint8_t cmd) {
+    gpio_put(dcx, 0);
+    write16blocking((uint16_t)cmd);
+}
+
+void ili9486_16_pararrel::sendData(uint8_t data) {
     gpio_put(dcx, 1);
+    write16blocking((uint16_t)data);
+}
+
+void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+    sendCommand(0x2A);
+    sendData(x0 >> 8); 
+    sendData(x0 & 0xFF);
+    sendData(x1 >> 8); 
+    sendData(x1 & 0xFF);
+
+    sendCommand(0x2B);
+    sendData(y0 >> 8);
+    sendData(y0 & 0xFF);
+    sendData(y1 >> 8);
+    sendData(y1 & 0xFF);
+}
+
+void ili9486_16_pararrel::fillScreen(uint16_t *color) {
+    setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
+    initGRAMWrite();
+
+    writeBufferDMA(color, (uint64_t)LONG_SIDE * (uint64_t)SHORT_SIDE, 1);
+}
+
+void ili9486_16_pararrel::printFrame(uint16_t *buffer) {
+    setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
+    initGRAMWrite();
+
+    writeBufferDMA(buffer, LONG_SIDE * SHORT_SIDE);
+}
+
+void ili9486_16_pararrel::setupILI9486(const ColorMode mode) {
+    gpio_put(csx, 0);
 
     // Reset
     gpio_put(resx, 1);
@@ -47,8 +114,6 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     sleep_ms(100);
     gpio_put(resx, 1);
     sleep_ms(100);
-
-    gpio_put(csx, 0);
 
     // Power control 1
     sendCommand(0xC0);
@@ -129,7 +194,7 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     const uint8_t format = (mode == ColorMode::RGB656) ? 0x55 : 0x55; // TODO RGB666 format
     sendData(format);
 
-    // Unknown init sequence
+    // Not sure what it does, found this init sequence and seems to work well
     sendCommand(0xF1);
     sendData(0x36);
     sendData(0x04);
@@ -139,7 +204,6 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     sendData(0x0F);
     sendData(0xA4);
     sendData(0x02);
-
     sendCommand(0xF2);
     sendData(0x18);
     sendData(0xA3);
@@ -150,18 +214,15 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     sendData(0xFF);
     sendData(0x32);
     sendData(0x00);
-
     sendCommand(0xF4);
     sendData(0x40);
     sendData(0x00);
     sendData(0x08);
     sendData(0x91);
     sendData(0x04);
-
     sendCommand(0xF8);
     sendData(0x21);
     sendData(0x04);
-
     sendCommand(0xF9);
     sendData(0x00);
     sendData(0x08);
@@ -173,70 +234,4 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     // Display ON
     sendCommand(0x29);
     sleep_ms(20);
-}
-
-void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
-    pio_sm_put_blocking(pio, 0, (uint32_t)data);
-
-    if (pioWait) {
-        waitForPio();
-    }
-}
-
-void ili9486_16_pararrel::writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits) {
-    // Configure dma channel
-    dma_channel_config c = dma_channel_get_default_config(dmaChannel);
-    channel_config_set_transfer_data_size(&c, DMA_SIZE_16);
-    channel_config_set_read_increment(&c, true);
-    channel_config_set_write_increment(&c, false);
-    channel_config_set_dreq(&c, DREQ_PIO0_TX0);
-    channel_config_set_ring(&c, false, repeatBits);
-
-    // Start transfer
-    dma_channel_configure(
-        dmaChannel,
-        &c,
-        &pio->txf[0],        // Destination: PIO TX FIFO
-        buffer,              // Source
-        bufferSize,          // Total pixels to write
-        true                 // Start transfer
-    );
-}
-
-void ili9486_16_pararrel::sendCommand(uint8_t cmd) {
-    gpio_put(dcx, 0);
-    write16blocking((uint16_t)cmd);
-}
-
-void ili9486_16_pararrel::sendData(uint8_t data) {
-    gpio_put(dcx, 1);
-    write16blocking((uint16_t)data);
-}
-
-void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
-    sendCommand(0x2A);
-    sendData(x0 >> 8); 
-    sendData(x0 & 0xFF);
-    sendData(x1 >> 8); 
-    sendData(x1 & 0xFF);
-
-    sendCommand(0x2B);
-    sendData(y0 >> 8);
-    sendData(y0 & 0xFF);
-    sendData(y1 >> 8);
-    sendData(y1 & 0xFF);
-}
-
-void ili9486_16_pararrel::fillScreen(uint16_t *color) {
-    setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
-    initGRAMWrite();
-
-    writeBufferDMA(color, (uint64_t)LONG_SIDE * (uint64_t)SHORT_SIDE, 1);
-}
-
-void ili9486_16_pararrel::printFrame(uint16_t *buffer) {
-    setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
-    initGRAMWrite();
-
-    writeBufferDMA(buffer, LONG_SIDE * SHORT_SIDE);
 }
