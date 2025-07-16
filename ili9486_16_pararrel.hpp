@@ -33,6 +33,16 @@ public:
 
 	// Claim one dma channel, and start PIO state machines 
 	void init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio, const ColorMode mode);
+	
+	// Set lcd refresh direction, memory write order ans switch between BGR and RGB modes (see ILI9486 0x36 command in datasheet)
+	// flipRowAddr - change order in which rows are written to ili9486 memory (change from default order)
+	// flipColAddr - change order in which columns are written to ili9486 memory (change from default order)
+	// makeHLonger - display's longer side in horizontal. shorter is vertical
+	// flipHRefresh - change order in which ili9486 refreshes display along longer side (change from default order)
+	// flipSRefresh - change order in which ili9486 refreshes display along shorter sied (change from default order)
+	// Refresh order can be used to reduce unpleased effect while changing frame
+	void setOrientation(const bool flipRowAddr, const bool flipColAddr, const bool makeHLonger, const bool flipLRefresh, const bool flipSRefresh, const bool BGR);
+
 	// Fill entire screen with one color
 	void fillScreen(uint16_t *color);
 	// Print frame from buffer, BUFFER LENGTH MUST MATCH NUMBER OF PIXELS (153600) 
@@ -41,8 +51,10 @@ public:
 	void setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 	// Return true if dma/pio is still sending data, any interaction with ili9486 if this method returns true might couze unexpected behavior  
 	inline bool isBusy();
-	// Convert RGB888 format to BGR565, and pack it to 16-bit value
+	// Convert RGB888 format to BGR565, and pack it to 16-bit value (blue is on least significant bits)
 	static inline uint16_t rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue);
+	// Convert RGB888 format to rgb565, and pack it to 16-bit value (red is on least significant bits)
+	static inline uint16_t rgb888_to_rgb565(const uint8_t red, const uint8_t green, const uint8_t blue);
 private:
 	// Only one class instance allowed
 	ili9486_16_pararrel() = default;
@@ -77,9 +89,14 @@ private:
 	int dmaChannel; // Currently used DMA channel, -1 if no dma channel in use
 };
 
-uint16_t ili9486_16_pararrel::rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue) {
+uint16_t ili9486_16_pararrel::rgb888_to_rgb565(const uint8_t red, const uint8_t green, const uint8_t blue) {
  	return ((blue & 0xF8) << 8) | ((green & 0xFC) << 3) | ((red & 0xF8) >> 3);
 }
+
+uint16_t ili9486_16_pararrel::rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue) {
+ 	return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
+}
+
 
 void ili9486_16_pararrel::initGRAMWrite() {
 	sendCommand(0x2C);

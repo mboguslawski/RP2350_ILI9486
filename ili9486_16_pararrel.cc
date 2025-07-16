@@ -38,6 +38,21 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     setupILI9486(mode);
 }
 
+void ili9486_16_pararrel::setOrientation(const bool flipRowAddr, const bool flipColAddr, const bool makeHLonger, const bool flipLRefresh, const bool flipSRefresh, const bool BGR) {
+    uint8_t parameters = 0; 
+    parameters |= 
+        (flipRowAddr << 7)
+        | (flipColAddr << 6)
+        | (makeHLonger << 5)
+        | (flipLRefresh << 4)
+        | (BGR << 3)
+        | (flipSRefresh << 2);
+
+    // Memory Access Control
+    sendCommand(0x36);
+    sendData(parameters);
+}
+
 void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
     pio_sm_put_blocking(pio, 0, (uint32_t)data);
 
