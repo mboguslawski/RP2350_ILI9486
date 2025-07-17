@@ -45,16 +45,22 @@ public:
 
 	// Fill entire screen with one color
 	void fillScreen(uint16_t *color);
+	
 	// Print frame from buffer, BUFFER LENGTH MUST MATCH NUMBER OF PIXELS (153600) 
 	void printFrame(uint16_t *buffer);
+	
 	// Set rectangle into which next print will be loaded (can be smaller then entire screen)
 	void setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
+	
 	// Return true if dma/pio is still sending data, any interaction with ili9486 if this method returns true might couze unexpected behavior  
 	inline bool isBusy();
+	
 	// Convert RGB888 format to BGR565, and pack it to 16-bit value (blue is on least significant bits)
 	static inline uint16_t rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue);
+	
 	// Convert RGB888 format to rgb565, and pack it to 16-bit value (red is on least significant bits)
 	static inline uint16_t rgb888_to_rgb565(const uint8_t red, const uint8_t green, const uint8_t blue);
+
 private:
 	// Only one class instance allowed
 	ili9486_16_pararrel() = default;
@@ -69,12 +75,21 @@ private:
 	static constexpr uint8_t SM0 = (uint8_t)0;
 	static constexpr uint8_t SM1 = (uint8_t)1;
 
-	void sendCommand(uint8_t command); // Handles dcx pin and send data to PIO (via CPU)
-	void sendData(uint8_t data); // Handles dcx pin and send data to PIO (via CPU) 
-	void write16blocking(uint16_t data, bool pioWait = true); // Send 16 bits to pio FIFO (via CPU)
-	void writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits = 0); // Sends buffer to PIO (via DMA)
+	// Send one byte as command to ILI9486
+	void sendCommand(uint8_t command);
 
-	inline void waitForPio(); // Wait till pio finished data transfer
+	// Send one byte as data to ILI9486 (optimal for command parameters)
+	void sendData(uint8_t data);
+	
+	// Send 16-bit data block to ILI9486 (via pio)
+	void write16blocking(uint16_t data, bool pioWait = true);
+
+	// Sends buffer to PIO (via DMA)
+	void writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits = 0);
+
+	// Wait till pio finished data transfer
+	inline void waitForPio();
+	
 	inline void initGRAMWrite();
 
 	// Initial commands to setup ILI9486
