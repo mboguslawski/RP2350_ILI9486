@@ -52,6 +52,15 @@ public:
 	// Set rectangle into which next print will be loaded (can be smaller then entire screen)
 	void setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 	
+	// Sets adaptive brightness mode, for more information see 0x55 command in ILI9486 datasheet
+	// Possible modes:
+	// 0x00 - off
+	// 0x01 - user interface image
+	// 0x02 - still picture (during initialization this mode is chosen)
+	// 0x03 - moving picture
+	// Passing other parameter then above will have no effect on ILI9486
+	void setAdaptiveBrightnessMode(const uint8_t mode);
+
 	// Return true if dma/pio is still sending data, any interaction with ili9486 if this method returns true might couze unexpected behavior  
 	inline bool isBusy();
 	

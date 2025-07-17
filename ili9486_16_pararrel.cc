@@ -119,6 +119,13 @@ void ili9486_16_pararrel::printFrame(uint16_t *buffer) {
     writeBufferDMA(buffer, LONG_SIDE * SHORT_SIDE);
 }
 
+void ili9486_16_pararrel::setAdaptiveBrightnessMode(const uint8_t mode) {
+    if (mode > 0x03) { return; } // Only 0x00-0x03 are valid parameters
+
+    sendCommand(0x55);
+    sendData(mode);
+}
+
 void ili9486_16_pararrel::setupILI9486(const ColorMode mode) {
     gpio_put(csx, 0);
 
@@ -208,6 +215,10 @@ void ili9486_16_pararrel::setupILI9486(const ColorMode mode) {
     sendCommand(0x3A);
     const uint8_t format = (mode == ColorMode::RGB656) ? 0x55 : 0x55; // TODO RGB666 format
     sendData(format);
+
+    // Adaptive brightness
+    sendCommand(0x55);
+    sendData(0x02); // 0x02 - still image mode
 
     // Not sure what it does, found this init sequence and seems to work well
     sendCommand(0xF1);
