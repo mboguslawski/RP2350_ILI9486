@@ -17,6 +17,7 @@ TODO: easy reconfiguration
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
+#include "hardware/irq.h"
 
 #include "ili9486_gram_write.pio.h"
 
@@ -96,8 +97,8 @@ private:
 	// Sends buffer to PIO (via DMA)
 	void writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits = 0);
 
-	// Wait till pio finished data transfer
-	inline void waitForPio();
+	// Sets dmaCompletedTime
+	static void dmaTransferCompleteISR(); 
 	
 	inline void initGRAMWrite();
 
@@ -111,6 +112,9 @@ private:
 	uint8_t wrx;
 	uint8_t d0; // D0-D15 are consecutive pins
 	int dmaChannel; // Currently used DMA channel, -1 if no dma channel in use
+	volatile uint64_t dmaCompletedTime; // Time in us of last completed dma transfer
+	volatile bool dmaBusy; // Will be set to false after setting dmaCompletedTime to avoid races
+	static constexpr uint64_t BUSY_DURATION_AFTER_COMPLETION = (uint64_t)100; // [us] Return busy state after DMA transfer completion (sattle ili9486 internal states)
 };
 
 uint16_t ili9486_16_pararrel::rgb888_to_rgb565(const uint8_t red, const uint8_t green, const uint8_t blue) {
@@ -121,18 +125,13 @@ uint16_t ili9486_16_pararrel::rgb888_to_bgr565(const uint8_t red, const uint8_t 
  	return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
 }
 
-
 void ili9486_16_pararrel::initGRAMWrite() {
 	sendCommand(0x2C);
 	gpio_put(dcx, 1);
 }
 
-void ili9486_16_pararrel::waitForPio() {
-	while(pio_interrupt_get(pio, 0) || !pio_sm_is_tx_fifo_empty(pio, SM0)) {
-        sleep_us(1);
-    }
-}
-
 bool ili9486_16_pararrel::isBusy() {
-	return pio_interrupt_get(pio, 0) || !pio_sm_is_tx_fifo_empty(pio, SM0) || dma_channel_is_busy(dmaChannel);
+    return dmaBusy ||
+        (pio_sm_get_tx_fifo_level(pio, SM0) != 0) ||
+        ((time_us_64() - dmaCompletedTime) <= BUSY_DURATION_AFTER_COMPLETION);
 }

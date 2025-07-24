@@ -13,9 +13,14 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     this->wrx = wrx;
     this->d0 = d0;
     this->pio = pio;
+    dmaCompletedTime = 0;
+    dmaBusy = false;
     
     // DMA setup
     this->dmaChannel = dma_claim_unused_channel(true);
+    irq_set_exclusive_handler(DMA_IRQ_0, dmaTransferCompleteISR);
+    irq_set_enabled(DMA_IRQ_0, true);
+    dma_channel_set_irq0_enabled(dmaChannel, true);
 
     // PIO setup
     int offsetProg1 = pio_add_program(pio, &data_push_program);
@@ -55,13 +60,23 @@ void ili9486_16_pararrel::setOrientation(const bool flipRowAddr, const bool flip
 
 void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
     pio_sm_put_blocking(pio, 0, (uint32_t)data);
+    
 
-    if (pioWait) {
-        waitForPio();
+    while( pio_sm_get_tx_fifo_level(pio, SM0) != 0 && pio_interrupt_get(pio, 0) ) {
+        sleep_us(1);
     }
 }
 
+extern "C" void ili9486_16_pararrel::dmaTransferCompleteISR() {
+    ili9486_16_pararrel &instance =  ili9486_16_pararrel::getInstance();
+    instance.dmaCompletedTime = time_us_64();
+    instance.dmaBusy = false;
+    dma_irqn_acknowledge_channel(0, instance.dmaChannel);
+}
+
 void ili9486_16_pararrel::writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits) {
+    dmaBusy = true;
+    
     // Configure dma channel
     dma_channel_config c = dma_channel_get_default_config(dmaChannel);
     channel_config_set_transfer_data_size(&c, DMA_SIZE_16);

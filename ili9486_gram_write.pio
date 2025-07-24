@@ -45,7 +45,7 @@ static inline void data_push_program_init(PIO pio, uint sm, uint offset, uint pi
 .side_set 1 opt
 	set pins 0
 .wrap_target
-	wait 1 irq 2 side 0 [3]		; Wait for D0-D15 data lines to be set (other sm task), drive wrx LOW, wait +-16ns
+	wait 1 irq 2 side 0 [5]		; Wait for D0-D15 data lines to be set (other sm task), drive wrx LOW, wait +-16ns
 	irq clear 1 side 1 [7]      ; Clear IRQ 0 to allow next data transfer via D0-D15 (other sm task), drive wrx HIGH, wait +-66ns
 .wrap
 
@@ -59,34 +59,5 @@ static inline void wrx_management_program_init(PIO pio, uint sm, uint offset, ui
 	sm_config_set_sideset_pins(&c, pin);
 	pio_sm_init(pio, sm, offset, &c);
 	pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-}
-%}
-
-.program data_push_for_18bit_color
-	set pins 0
-.wrap_target
-	;irq clear 0		; Signal that PIO is not writing data
-	pull block   	; Wait for 32-bit data block on FIFO
-	;irq set 0   	; Signal that PIO is writing data
-	wait 0 irq 1	; Wait for wrx pin cycle to finish (on first run it does not wait here)
-	in osr 16
-	mov isr osr
-	out pins 16  	; Update D0-D8 data lines with data from FIFO
-	irq set 2		; Start wrx cycle (on other sm)
-	irq set 1     	; Other sm will clear this to signal end of wrx cycle
-.wrap
-
-; Initialization
-% c-sdk {
-#include "hardware/gpio.h"
-static inline void data_push_for_18bit_color_program_init(PIO pio, uint sm, uint offset, uint pin) {
-   pio_sm_config c = data_push_program_get_default_config(offset);
-   sm_config_set_out_pins(&c, pin, 16);
-   sm_config_set_in_shift(&c, false, false, 32);
-   for (uint i = 0; i < 16; i++) {
-	pio_gpio_init(pio, pin+i);
-   }
-   pio_sm_init(pio, sm, offset, &c);
-   pio_sm_set_consecutive_pindirs(pio, sm, pin, 16, true);
 }
 %}
