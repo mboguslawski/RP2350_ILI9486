@@ -78,10 +78,6 @@ private:
     ili9486_16_pararrel& operator=(const ili9486_16_pararrel&) = delete;
     ili9486_16_pararrel(ili9486_16_pararrel&&) = delete;
     ili9486_16_pararrel& operator=(ili9486_16_pararrel&&) = delete;
-	
-	// Which state machines to use
-	static constexpr uint8_t SM0 = (uint8_t)0;
-	static constexpr uint8_t SM1 = (uint8_t)1;
 
 	// Send one byte as command to ILI9486
 	void sendCommand(uint8_t command);
@@ -102,6 +98,10 @@ private:
 
 	// Initial commands to setup ILI9486
 	void setupILI9486();
+
+	// Which state machines to use
+	static constexpr uint8_t SM_DATA_LINES = (uint8_t)0;
+	static constexpr uint8_t SM_WRX = (uint8_t)1;
 
 	PIO pio;
 	uint8_t csx;
@@ -130,6 +130,6 @@ void ili9486_16_pararrel::initGRAMWrite() {
 
 bool ili9486_16_pararrel::isBusy() {
     return dmaBusy ||
-        (pio_sm_get_tx_fifo_level(pio, SM0) != 0) ||
+        (pio_sm_get_tx_fifo_level(pio, SM_DATA_LINES) != 0) ||
         ((time_us_64() - dmaCompletedTime) <= BUSY_DURATION_AFTER_COMPLETION);
 }

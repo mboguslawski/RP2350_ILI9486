@@ -26,11 +26,11 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     int offsetProg1 = pio_add_program(pio, &data_push_program);
     int offsetProg2 = pio_add_program(pio, &wrx_management_program);
 
-    data_push_program_init(pio, SM0, offsetProg1, d0);
-    wrx_management_program_init(pio, SM1, offsetProg2, wrx);
+    data_push_program_init(pio, SM_DATA_LINES, offsetProg1, d0);
+    wrx_management_program_init(pio, SM_WRX, offsetProg2, wrx);
 
-    pio_sm_set_enabled(pio, SM0, true);
-    pio_sm_set_enabled(pio, SM1, true);
+    pio_sm_set_enabled(pio, SM_DATA_LINES, true);
+    pio_sm_set_enabled(pio, SM_WRX, true);
 
     // GPIO setup (D0-D15 and wrx are handled via PIO)
     gpio_init(csx);
@@ -62,7 +62,7 @@ void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
     pio_sm_put_blocking(pio, 0, (uint32_t)data);
     
 
-    while( pio_sm_get_tx_fifo_level(pio, SM0) != 0 && pio_interrupt_get(pio, 0) ) {
+    while( pio_sm_get_tx_fifo_level(pio, SM_DATA_LINES) != 0 && pio_interrupt_get(pio, 0) ) {
         sleep_us(1);
     }
 }
@@ -82,14 +82,14 @@ void ili9486_16_pararrel::writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, 
     channel_config_set_transfer_data_size(&c, DMA_SIZE_16);
     channel_config_set_read_increment(&c, true);
     channel_config_set_write_increment(&c, false);
-    channel_config_set_dreq(&c, pio_get_dreq(pio, SM0, true));
+    channel_config_set_dreq(&c, pio_get_dreq(pio, SM_DATA_LINES, true));
     channel_config_set_ring(&c, false, repeatBits);
 
     // Start transfer
     dma_channel_configure(
         dmaChannel,
         &c,
-        &pio->txf[0],        // Destination: PIO TX FIFO
+        &pio->txf[SM_DATA_LINES],        // Destination: PIO TX FIFO
         buffer,              // Source
         bufferSize,          // Total pixels to write
         true                 // Start transfer
