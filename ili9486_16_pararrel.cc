@@ -5,7 +5,7 @@ ili9486_16_pararrel& ili9486_16_pararrel::getInstance() {
     return driver;
 }
 
-void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio, const ColorMode mode) {
+void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio) {
     // Assign values
     this->csx = csx;
     this->dcx = dcx;
@@ -40,7 +40,7 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     gpio_init(resx);
     gpio_set_dir(resx, GPIO_OUT);
 
-    setupILI9486(mode);
+    setupILI9486();
 }
 
 void ili9486_16_pararrel::setOrientation(const bool flipRowAddr, const bool flipColAddr, const bool makeHLonger, const bool flipLRefresh, const bool flipSRefresh, const bool BGR) {
@@ -141,7 +141,7 @@ void ili9486_16_pararrel::setAdaptiveBrightnessMode(const uint8_t mode) {
     sendData(mode);
 }
 
-void ili9486_16_pararrel::setupILI9486(const ColorMode mode) {
+void ili9486_16_pararrel::setupILI9486() {
     gpio_put(csx, 0);
 
     // Reset
@@ -228,8 +228,7 @@ void ili9486_16_pararrel::setupILI9486(const ColorMode mode) {
 
     // Pixel format. 0x66 RGB666, 0x55 RGB565
     sendCommand(0x3A);
-    const uint8_t format = (mode == ColorMode::RGB656) ? 0x55 : 0x55; // TODO RGB666 format
-    sendData(format);
+    sendData(0x55);
 
     // Adaptive brightness
     sendCommand(0x55);

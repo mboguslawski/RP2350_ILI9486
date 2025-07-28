@@ -30,10 +30,8 @@ public:
 
 	static ili9486_16_pararrel& getInstance(); // Return only possible instance of this class
 
-	enum ColorMode {RGB656};
-
 	// Claim one dma channel, and start PIO state machines 
-	void init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio, const ColorMode mode);
+	void init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio);
 	
 	// Set lcd refresh direction, memory write order ans switch between BGR and RGB modes (see ILI9486 0x36 command in datasheet)
 	// flipRowAddr - change order in which rows are written to ili9486 memory (change from default order)
@@ -103,7 +101,7 @@ private:
 	inline void initGRAMWrite();
 
 	// Initial commands to setup ILI9486
-	void setupILI9486(const ColorMode mode);
+	void setupILI9486();
 
 	PIO pio;
 	uint8_t csx;
