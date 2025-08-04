@@ -13,6 +13,7 @@ void ili9486_16_pararrel::init(const int8_t csx, const int8_t dcx, const int8_t 
     this->wrx = wrx;
     this->d0 = d0;
     this->pio = pio;
+    makeHLonger = false;
     dmaCompletedTime = 0;
     dmaBusy = false;
     
@@ -62,6 +63,8 @@ void ili9486_16_pararrel::setOrientation(const bool flipRowAddr, const bool flip
     // Memory Access Control
     sendCommand(0x36);
     sendData(parameters);
+
+    this->makeHLonger = makeHLonger;
 }
 
 void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
@@ -113,6 +116,16 @@ void ili9486_16_pararrel::sendData(uint8_t data) {
 }
 
 void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+    if (makeHLonger) {
+        // Swaps y with x
+        uint16_t tmp = x0;
+        x0 = y0;
+        y0 = tmp;
+        tmp = x1;
+        x1 = y1;
+        y1 = tmp;
+    }
+    
     sendCommand(0x2A);
     sendData(x0 >> 8); 
     sendData(x0 & 0xFF);

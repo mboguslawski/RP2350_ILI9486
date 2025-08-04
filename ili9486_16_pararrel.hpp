@@ -39,7 +39,7 @@ public:
 	// flipRowAddr - change order in which rows are written to ili9486 memory (change from default order)
 	// flipColAddr - change order in which columns are written to ili9486 memory (change from default order)
 	// makeHLonger - display's longer side in horizontal. shorter is vertical
-	// flipHRefresh - change order in which ili9486 refreshes display along longer side (change from default order)
+	// flipLRefresh - change order in which ili9486 refreshes display along longer side (change from default order)
 	// flipSRefresh - change order in which ili9486 refreshes display along shorter sied (change from default order)
 	// Refresh order can be used to reduce unpleased effect while changing frame
 	void setOrientation(const bool flipRowAddr, const bool flipColAddr, const bool makeHLonger, const bool flipLRefresh, const bool flipSRefresh, const bool BGR);
@@ -111,6 +111,7 @@ private:
 	int8_t resx;
 	int8_t wrx;
 	int8_t d0; // D0-D15 are consecutive pins
+	bool makeHLonger; // Display's longer side in horizontal. shorter is vertical
 	int dmaChannel; // Currently used DMA channel, -1 if no dma channel in use
 	volatile uint64_t dmaCompletedTime; // Time in us of last completed dma transfer
 	volatile bool dmaBusy; // Will be set to false after setting dmaCompletedTime to avoid races
