@@ -5,7 +5,7 @@ ili9486_16_pararrel& ili9486_16_pararrel::getInstance() {
     return driver;
 }
 
-void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio) {
+void ili9486_16_pararrel::init(const int8_t csx, const int8_t dcx, const int8_t resx, const int8_t wrx, const int8_t d0, const PIO pio) {
     // Assign values
     this->csx = csx;
     this->dcx = dcx;
@@ -33,12 +33,18 @@ void ili9486_16_pararrel::init(const uint8_t csx, const uint8_t dcx, const uint8
     pio_sm_set_enabled(pio, SM_WRX, true);
 
     // GPIO setup (D0-D15 and wrx are handled via PIO)
-    gpio_init(csx);
-    gpio_set_dir(csx, GPIO_OUT);
+    if (csx != -1) {
+        gpio_init(csx);
+        gpio_set_dir(csx, GPIO_OUT);
+    }
+
     gpio_init(dcx);
     gpio_set_dir(dcx, GPIO_OUT);
-    gpio_init(resx);
-    gpio_set_dir(resx, GPIO_OUT);
+    
+    if (resx != -1) {
+        gpio_init(resx);
+        gpio_set_dir(resx, GPIO_OUT);
+    }
 
     setupILI9486();
 }
@@ -142,15 +148,19 @@ void ili9486_16_pararrel::setAdaptiveBrightnessMode(const uint8_t mode) {
 }
 
 void ili9486_16_pararrel::setupILI9486() {
-    gpio_put(csx, 0);
+    if (csx != -1) {
+        gpio_put(csx, 0);
+    }
 
     // Reset
-    gpio_put(resx, 1);
-    sleep_ms(100);
-    gpio_put(resx, 0);
-    sleep_ms(100);
-    gpio_put(resx, 1);
-    sleep_ms(100);
+    if (resx != -1) {
+        gpio_put(resx, 1);
+        sleep_ms(100);
+        gpio_put(resx, 0);
+        sleep_ms(100);
+        gpio_put(resx, 1);
+        sleep_ms(100);
+    }
 
     // Power control 1
     sendCommand(0xC0);

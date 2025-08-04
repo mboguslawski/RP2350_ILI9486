@@ -30,8 +30,10 @@ public:
 
 	static ili9486_16_pararrel& getInstance(); // Return only possible instance of this class
 
-	// Claim one dma channel, and start PIO state machines 
-	void init(const uint8_t csx, const uint8_t dcx, const uint8_t resx, const uint8_t wrx, const uint8_t d0, const PIO pio);
+	// Claim one dma channel, and start PIO state machines
+	// csx can be hardwired to gnd and can be disabled in driver by passing -1
+	// resx can be hardwired to +3.3V and can be disabled in driver by passing -1 
+	void init(const int8_t csx, const int8_t dcx, const int8_t resx, const int8_t wrx, const int8_t d0, const PIO pio);
 	
 	// Set lcd refresh direction, memory write order ans switch between BGR and RGB modes (see ILI9486 0x36 command in datasheet)
 	// flipRowAddr - change order in which rows are written to ili9486 memory (change from default order)
@@ -104,11 +106,11 @@ private:
 	static constexpr uint8_t SM_WRX = (uint8_t)1;
 
 	PIO pio;
-	uint8_t csx;
-	uint8_t dcx;
-	uint8_t resx;
-	uint8_t wrx;
-	uint8_t d0; // D0-D15 are consecutive pins
+	int8_t csx;
+	int8_t dcx;
+	int8_t resx;
+	int8_t wrx;
+	int8_t d0; // D0-D15 are consecutive pins
 	int dmaChannel; // Currently used DMA channel, -1 if no dma channel in use
 	volatile uint64_t dmaCompletedTime; // Time in us of last completed dma transfer
 	volatile bool dmaBusy; // Will be set to false after setting dmaCompletedTime to avoid races
