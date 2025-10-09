@@ -44,6 +44,9 @@ public:
 	// Refresh order can be used to reduce unpleased effect while changing frame
 	void setOrientation(const bool flipRowAddr, const bool flipColAddr, const bool makeHLonger, const bool flipLRefresh, const bool flipSRefresh, const bool BGR);
 
+	// Prints pixels from buffer to the screen, can be used after setAddressWindow() call to print only to chosen screen part.
+	void printPixels(uint16_t *buffer, uint64_t size);
+
 	// Fill entire screen with one color
 	void fillScreen(uint16_t *color);
 	

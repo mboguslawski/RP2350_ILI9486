@@ -139,6 +139,11 @@ void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1
     sendData(y1 & 0xFF);
 }
 
+void ili9486_16_pararrel::printPixels(uint16_t* buffer, uint64_t size) {
+    initGRAMWrite();
+    writeBufferDMA(buffer, size);
+}
+
 void ili9486_16_pararrel::fillScreen(uint16_t *color) {
     setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
     initGRAMWrite();
