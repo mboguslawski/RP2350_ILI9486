@@ -1,11 +1,11 @@
-#include "ili9486_16_pararrel.hpp"
+#include "rp2350_ili9486.hpp"
 
-ili9486_16_pararrel& ili9486_16_pararrel::getInstance() {
-    static ili9486_16_pararrel driver;
+rp2350_ili9486& rp2350_ili9486::getInstance() {
+    static rp2350_ili9486 driver;
     return driver;
 }
 
-void ili9486_16_pararrel::init(const int8_t csx, const int8_t dcx, const int8_t resx, const int8_t wrx, const int8_t d0, const PIO pio) {
+void rp2350_ili9486::init(const int8_t csx, const int8_t dcx, const int8_t resx, const int8_t wrx, const int8_t d0, const PIO pio) {
     // Assign values
     this->csx = csx;
     this->dcx = dcx;
@@ -24,10 +24,10 @@ void ili9486_16_pararrel::init(const int8_t csx, const int8_t dcx, const int8_t 
     dma_channel_set_irq0_enabled(dmaChannel, true);
 
     // PIO setup
-    int offsetProg1 = pio_add_program(pio, &data_push_program);
+    int offsetProg1 = pio_add_program(pio, &data_push_16_program);
     int offsetProg2 = pio_add_program(pio, &wrx_management_program);
 
-    data_push_program_init(pio, SM_DATA_LINES, offsetProg1, d0);
+    data_push_16_program_init(pio, SM_DATA_LINES, offsetProg1, d0);
     wrx_management_program_init(pio, SM_WRX, offsetProg2, wrx);
 
     pio_sm_set_enabled(pio, SM_DATA_LINES, true);
@@ -50,7 +50,7 @@ void ili9486_16_pararrel::init(const int8_t csx, const int8_t dcx, const int8_t 
     setupILI9486();
 }
 
-void ili9486_16_pararrel::setOrientation(const bool flipRowAddr, const bool flipColAddr, const bool makeHLonger, const bool flipLRefresh, const bool flipSRefresh, const bool BGR) {
+void rp2350_ili9486::setOrientation(const bool flipRowAddr, const bool flipColAddr, const bool makeHLonger, const bool flipLRefresh, const bool flipSRefresh, const bool BGR) {
     uint8_t parameters = 0; 
     parameters |= 
         (flipRowAddr << 7)
@@ -67,7 +67,7 @@ void ili9486_16_pararrel::setOrientation(const bool flipRowAddr, const bool flip
     this->makeHLonger = makeHLonger;
 }
 
-void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
+void rp2350_ili9486::write16blocking(uint16_t data, bool pioWait) {
     pio_sm_put_blocking(pio, 0, (uint32_t)data);
     
 
@@ -76,14 +76,14 @@ void ili9486_16_pararrel::write16blocking(uint16_t data, bool pioWait) {
     }
 }
 
-extern "C" void ili9486_16_pararrel::dmaTransferCompleteISR() {
-    ili9486_16_pararrel &instance =  ili9486_16_pararrel::getInstance();
+extern "C" void rp2350_ili9486::dmaTransferCompleteISR() {
+    rp2350_ili9486 &instance =  rp2350_ili9486::getInstance();
     instance.dmaCompletedTime = time_us_64();
     instance.dmaBusy = false;
     dma_irqn_acknowledge_channel(0, instance.dmaChannel);
 }
 
-void ili9486_16_pararrel::writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits) {
+void rp2350_ili9486::writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, uint64_t repeatBits) {
     dmaBusy = true;
     
     // Configure dma channel
@@ -105,17 +105,17 @@ void ili9486_16_pararrel::writeBufferDMA(uint16_t *buffer, uint64_t bufferSize, 
     );
 }
 
-void ili9486_16_pararrel::sendCommand(uint8_t cmd) {
+void rp2350_ili9486::sendCommand(uint8_t cmd) {
     gpio_put(dcx, 0);
     write16blocking((uint16_t)cmd);
 }
 
-void ili9486_16_pararrel::sendData(uint8_t data) {
+void rp2350_ili9486::sendData(uint8_t data) {
     gpio_put(dcx, 1);
     write16blocking((uint16_t)data);
 }
 
-void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+void rp2350_ili9486::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
     if (makeHLonger) {
         // Swaps y with x
         uint16_t tmp = x0;
@@ -139,33 +139,33 @@ void ili9486_16_pararrel::setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1
     sendData(y1 & 0xFF);
 }
 
-void ili9486_16_pararrel::printPixels(uint16_t* buffer, uint64_t size) {
+void rp2350_ili9486::printPixels(uint16_t* buffer, uint64_t size) {
     initGRAMWrite();
     writeBufferDMA(buffer, size);
 }
 
-void ili9486_16_pararrel::fillScreen(uint16_t *color) {
-    setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
+void rp2350_ili9486::fillScreen(uint16_t *color) {
+    setAddressWindow(0, 0, rp2350_ili9486::SHORT_SIDE - 1, rp2350_ili9486::LONG_SIDE -1);
     initGRAMWrite();
 
     writeBufferDMA(color, (uint64_t)LONG_SIDE * (uint64_t)SHORT_SIDE, 1);
 }
 
-void ili9486_16_pararrel::printFrame(uint16_t *buffer) {
-    setAddressWindow(0, 0, ili9486_16_pararrel::SHORT_SIDE - 1, ili9486_16_pararrel::LONG_SIDE -1);
+void rp2350_ili9486::printFrame(uint16_t *buffer) {
+    setAddressWindow(0, 0, rp2350_ili9486::SHORT_SIDE - 1, rp2350_ili9486::LONG_SIDE -1);
     initGRAMWrite();
 
     writeBufferDMA(buffer, LONG_SIDE * SHORT_SIDE);
 }
 
-void ili9486_16_pararrel::setAdaptiveBrightnessMode(const uint8_t mode) {
+void rp2350_ili9486::setAdaptiveBrightnessMode(const uint8_t mode) {
     if (mode > 0x03) { return; } // Only 0x00-0x03 are valid parameters
 
     sendCommand(0x55);
     sendData(mode);
 }
 
-void ili9486_16_pararrel::setupILI9486() {
+void rp2350_ili9486::setupILI9486() {
     if (csx != -1) {
         gpio_put(csx, 0);
     }

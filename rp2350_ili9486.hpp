@@ -19,16 +19,16 @@ TODO: easy reconfiguration
 #include "hardware/dma.h"
 #include "hardware/irq.h"
 
-#include "ili9486_gram_write.pio.h"
+#include "rp2350_ili9486_gram_write.pio.h"
 
-class ili9486_16_pararrel {
+class rp2350_ili9486 {
 public:
 	// Screen dimensions
 	static constexpr uint16_t LONG_SIDE = (uint16_t)480;
 	static constexpr uint16_t SHORT_SIDE = (uint16_t)320;
 	static constexpr uint32_t PIXEL_NUM = (uint32_t)153600; // 480*320=153600
 
-	static ili9486_16_pararrel& getInstance(); // Return only possible instance of this class
+	static rp2350_ili9486& getInstance(); // Return only possible instance of this class
 
 	// Claim one dma channel, and start PIO state machines
 	// csx can be hardwired to gnd and can be disabled in driver by passing -1
@@ -76,13 +76,13 @@ public:
 
 private:
 	// Only one class instance allowed
-	ili9486_16_pararrel() = default;
-	~ili9486_16_pararrel() = default;
+	rp2350_ili9486() = default;
+	~rp2350_ili9486() = default;
     // Prevent duplicates
-    ili9486_16_pararrel(const ili9486_16_pararrel&) = delete;
-    ili9486_16_pararrel& operator=(const ili9486_16_pararrel&) = delete;
-    ili9486_16_pararrel(ili9486_16_pararrel&&) = delete;
-    ili9486_16_pararrel& operator=(ili9486_16_pararrel&&) = delete;
+    rp2350_ili9486(const rp2350_ili9486&) = delete;
+    rp2350_ili9486& operator=(const rp2350_ili9486&) = delete;
+    rp2350_ili9486(rp2350_ili9486&&) = delete;
+    rp2350_ili9486& operator=(rp2350_ili9486&&) = delete;
 
 	// Send one byte as command to ILI9486
 	void sendCommand(uint8_t command);
@@ -121,20 +121,20 @@ private:
 	static constexpr uint64_t BUSY_DURATION_AFTER_COMPLETION = (uint64_t)100; // [us] Return busy state after DMA transfer completion (sattle ili9486 internal states)
 };
 
-uint16_t ili9486_16_pararrel::rgb888_to_rgb565(const uint8_t red, const uint8_t green, const uint8_t blue) {
+uint16_t rp2350_ili9486::rgb888_to_rgb565(const uint8_t red, const uint8_t green, const uint8_t blue) {
  	return ((blue & 0xF8) << 8) | ((green & 0xFC) << 3) | ((red & 0xF8) >> 3);
 }
 
-uint16_t ili9486_16_pararrel::rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue) {
+uint16_t rp2350_ili9486::rgb888_to_bgr565(const uint8_t red, const uint8_t green, const uint8_t blue) {
  	return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
 }
 
-void ili9486_16_pararrel::initGRAMWrite() {
+void rp2350_ili9486::initGRAMWrite() {
 	sendCommand(0x2C);
 	gpio_put(dcx, 1);
 }
 
-bool ili9486_16_pararrel::isBusy() {
+bool rp2350_ili9486::isBusy() {
     return dmaBusy ||
         (pio_sm_get_tx_fifo_level(pio, SM_DATA_LINES) != 0) ||
         ((time_us_64() - dmaCompletedTime) <= BUSY_DURATION_AFTER_COMPLETION);

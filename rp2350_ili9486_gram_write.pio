@@ -5,27 +5,29 @@
 
 ; =============================================================================================================================
 
-; data_push - responsible for pushing data from FIFO to D0-D15 data lines (ONLY 16 LEAST SIGNIFICANT BITS!!!)
+
+
+; data_push_16 - responsible for pushing data from FIFO to D0-D15 data lines (ONLY 16 LEAST SIGNIFICANT BITS!!!)
 ; signals if busy communicating with ILI9486 with irq 0, 0 -> not writing, 1 -> writing
 ; communicates with other sm responsible for wrx signal handling via irq1 nad irq2
 
-.program data_push
+.program data_push_16
 	set pins 0
 .wrap_target
 	irq clear 0		; Signal that PIO is not writing data
 	pull block   	; Wait for 32-bit data block on FIFO
 	irq set 0   	; Signal that PIO is writing data
 	wait 0 irq 1	; Wait for wrx pin cycle to finish (on first run it does not wait here)
-	out pins 16  	; Update D0-D15 data lines with data from FIFO
+	out pins 16	; Update D0-D15 data lines with data from FIFO
 	irq set 2		; Start wrx cycle (on other sm)
 	irq set 1     	; Other sm will clear this to signal end of wrx cycle
 .wrap
 
-; Initialization of data_push program
+; Initialization of data_push_16 program
 % c-sdk {
 #include "hardware/gpio.h"
-static inline void data_push_program_init(PIO pio, uint sm, uint offset, uint pin) {
-   pio_sm_config c = data_push_program_get_default_config(offset);
+static inline void data_push_16_program_init(PIO pio, uint sm, uint offset, uint pin) {
+   pio_sm_config c = data_push_16_program_get_default_config(offset);
    sm_config_set_out_pins(&c, pin, 16);
    for (uint i = 0; i < 16; i++) {
 	pio_gpio_init(pio, pin+i);
