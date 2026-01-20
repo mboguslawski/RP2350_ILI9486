@@ -1,5 +1,5 @@
 add_library(rp2350_ili9486 STATIC
-    rp2350_ili9486.cc
+    rp2350_ili9486.c
 )
 
 target_link_libraries(rp2350_ili9486
